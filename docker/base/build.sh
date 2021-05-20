@@ -435,6 +435,8 @@ for TARGET in $TARGETS; do
   fi
 done
 
+ls -R /build
+
 # Clean up any leftovers for subsequent build invocations
 echo "Cleaning up build environment..."
 rm -rf /deps
