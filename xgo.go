@@ -56,6 +56,7 @@ var (
 	targets      = flag.String("targets", "*/*", "Comma separated targets to build for")
 	dockerImage  = flag.String("image", "", "Use custom docker image instead of official distribution")
 	moduleSubDir = flag.String("moduleSubDir", "", "Subdirectory with main module to build")
+	volumesFrom  = flag.String("volumesFrom", "", "Mount volumes from another docker container")
 )
 
 // ConfigFlags is a simple set of flags to define the environment and dependencies.
@@ -69,6 +70,7 @@ type ConfigFlags struct {
 	Arguments    string   // CGO dependency configure arguments
 	Targets      []string // Targets to build for
 	ModuleSubDir string   // Subdirectory with Go Module to build
+	VolumesFrom  string   // Mount volumes from another docker container
 }
 
 // Command line arguments to pass to go build
@@ -178,6 +180,7 @@ func main() {
 		Arguments:    *crossArgs,
 		Targets:      strings.Split(*targets, ","),
 		ModuleSubDir: *moduleSubDir,
+		VolumesFrom:  *volumesFrom,
 	}
 	flags := &BuildFlags{
 		Verbose:  *buildVerbose,
@@ -340,6 +343,7 @@ func compile(image string, config *ConfigFlags, flags *BuildFlags, folder string
 		"-e", "TARGETS=" + strings.Replace(strings.Join(config.Targets, " "), "*", ".", -1),
 		"-e", fmt.Sprintf("GOPROXY=%s", os.Getenv("GOPROXY")),
 		"-e", "MODULE_SUB_DIR=" + config.ModuleSubDir,
+		"--volumes-from", config.VolumesFrom,
 	}
 	if usesModules {
 		args = append(args, []string{"-e", "GO111MODULE=on"}...)
@@ -350,7 +354,7 @@ func compile(image string, config *ConfigFlags, flags *BuildFlags, folder string
 		if err != nil {
 			log.Fatalf("Failed to locate requested module repository: %v.", err)
 		}
-		args = append(args, []string{"-v", absRepository + ":/source"}...)
+		//args = append(args, []string{"-v", absRepository + ":/source"}...)
 
 		fmt.Printf("Enabled Go module support\n")
 

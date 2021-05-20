@@ -73,6 +73,7 @@ elif [[ "$USEMODULES" == true ]]; then
   fi
   # Change into the repo/source folder
   SOURCE_BUILD_DIR=/source/$MODULE_SUB_DIR
+  ls -l /source
   cd "$SOURCE_BUILD_DIR"
   echo "Building $SOURCE_BUILD_DIR/go.mod..."
 
