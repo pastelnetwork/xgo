@@ -40,21 +40,22 @@ func init() {
 }
 
 // Cross compilation docker containers
-var dockerBase = "techknowlogick/xgo:base"
-var dockerDist = "techknowlogick/xgo:"
+var dockerBase = "maxhora/xgo:base"
+var dockerDist = "maxhora/xgo:"
 
 // Command line arguments to fine tune the compilation
 var (
-	goVersion   = flag.String("go", "latest", "Go release to use for cross compilation")
-	srcPackage  = flag.String("pkg", "", "Sub-package to build if not root import")
-	srcRemote   = flag.String("remote", "", "Version control remote repository to build")
-	srcBranch   = flag.String("branch", "", "Version control branch to build")
-	outPrefix   = flag.String("out", "", "Prefix to use for output naming (empty = package name)")
-	outFolder   = flag.String("dest", "", "Destination folder to put binaries in (empty = current)")
-	crossDeps   = flag.String("deps", "", "CGO dependencies (configure/make based archives)")
-	crossArgs   = flag.String("depsargs", "", "CGO dependency configure arguments")
-	targets     = flag.String("targets", "*/*", "Comma separated targets to build for")
-	dockerImage = flag.String("image", "", "Use custom docker image instead of official distribution")
+	goVersion    = flag.String("go", "latest", "Go release to use for cross compilation")
+	srcPackage   = flag.String("pkg", "", "Sub-package to build if not root import")
+	srcRemote    = flag.String("remote", "", "Version control remote repository to build")
+	srcBranch    = flag.String("branch", "", "Version control branch to build")
+	outPrefix    = flag.String("out", "", "Prefix to use for output naming (empty = package name)")
+	outFolder    = flag.String("dest", "", "Destination folder to put binaries in (empty = current)")
+	crossDeps    = flag.String("deps", "", "CGO dependencies (configure/make based archives)")
+	crossArgs    = flag.String("depsargs", "", "CGO dependency configure arguments")
+	targets      = flag.String("targets", "*/*", "Comma separated targets to build for")
+	dockerImage  = flag.String("image", "", "Use custom docker image instead of official distribution")
+	moduleSubDir = flag.String("moduleSubDir", "", "Subdirectory with main module to build")
 )
 
 // ConfigFlags is a simple set of flags to define the environment and dependencies.
@@ -67,6 +68,7 @@ type ConfigFlags struct {
 	Dependencies string   // CGO dependencies (configure/make based archives)
 	Arguments    string   // CGO dependency configure arguments
 	Targets      []string // Targets to build for
+	ModuleSubDir string   // Subdirectory with Go Module to build
 }
 
 // Command line arguments to pass to go build
@@ -175,6 +177,7 @@ func main() {
 		Dependencies: *crossDeps,
 		Arguments:    *crossArgs,
 		Targets:      strings.Split(*targets, ","),
+		ModuleSubDir: *moduleSubDir,
 	}
 	flags := &BuildFlags{
 		Verbose:  *buildVerbose,
@@ -255,19 +258,20 @@ func compile(image string, config *ConfigFlags, flags *BuildFlags, folder string
 	locals, mounts, paths := []string{}, []string{}, []string{}
 	var usesModules bool
 	if strings.HasPrefix(config.Repository, string(filepath.Separator)) || strings.HasPrefix(config.Repository, ".") {
-		// Resolve the repository import path from the file path
-		config.Repository = resolveImportPath(config.Repository)
+		if _, err := os.Stat(config.Repository + "/go.mod"); err == nil {
+			usesModules = true
+		}
 
-		// Determine if this is a module-based repository
-		var modFile = config.Repository + "/go.mod"
-		_, err := os.Stat(modFile)
-		usesModules = !os.IsNotExist(err)
+		usesModules = true
 
 		// Iterate over all the local libs and export the mount points
 		if os.Getenv("GOPATH") == "" && !usesModules {
 			log.Fatalf("No $GOPATH is set or forwarded to xgo")
 		}
 		if !usesModules {
+			// Resolve the repository import path from the file path
+			config.Repository = resolveImportPath(config.Repository)
+
 			for _, gopath := range strings.Split(os.Getenv("GOPATH"), string(os.PathListSeparator)) {
 				// Since docker sandboxes volumes, resolve any symlinks manually
 				sources := filepath.Join(gopath, "src")
@@ -335,6 +339,7 @@ func compile(image string, config *ConfigFlags, flags *BuildFlags, folder string
 		"-e", fmt.Sprintf("FLAG_TRIMPATH=%v", flags.Trimpath),
 		"-e", "TARGETS=" + strings.Replace(strings.Join(config.Targets, " "), "*", ".", -1),
 		"-e", fmt.Sprintf("GOPROXY=%s", os.Getenv("GOPROXY")),
+		"-e", "MODULE_SUB_DIR=" + config.ModuleSubDir,
 	}
 	if usesModules {
 		args = append(args, []string{"-e", "GO111MODULE=on"}...)

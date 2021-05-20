@@ -72,8 +72,11 @@ elif [[ "$USEMODULES" == true ]]; then
     exit 10
   fi
   # Change into the repo/source folder
-  cd /source
-  echo "Building /source/go.mod..."
+  SOURCE_BUILD_DIR=/source/$MODULE_SUB_DIR
+  cd "$SOURCE_BUILD_DIR"
+  echo "Building $SOURCE_BUILD_DIR/go.mod..."
+
+  go mod download
 else
   # Inject all possible Godep paths to short circuit go gets
   GOPATH_ROOT=$GOPATH/src
@@ -151,7 +154,7 @@ NAME=`basename $1/$PACK`
 # Go module-based builds error with 'cannot find main module'
 # when $PACK is defined
 if [[ "$USEMODULES" = true ]]; then
-  NAME=`sed -n 's/module\ \(.*\)/\1/p' /source/go.mod`
+  NAME=`sed -n 's/module\ \(.*\)/\1/p' $SOURCE_BUILD_DIR/go.mod`
 fi
 
 # Support go module package
