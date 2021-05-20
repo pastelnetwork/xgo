@@ -45,32 +45,36 @@ var dockerDist = "maxhora/xgo:"
 
 // Command line arguments to fine tune the compilation
 var (
-	goVersion    = flag.String("go", "latest", "Go release to use for cross compilation")
-	srcPackage   = flag.String("pkg", "", "Sub-package to build if not root import")
-	srcRemote    = flag.String("remote", "", "Version control remote repository to build")
-	srcBranch    = flag.String("branch", "", "Version control branch to build")
-	outPrefix    = flag.String("out", "", "Prefix to use for output naming (empty = package name)")
-	outFolder    = flag.String("dest", "", "Destination folder to put binaries in (empty = current)")
-	crossDeps    = flag.String("deps", "", "CGO dependencies (configure/make based archives)")
-	crossArgs    = flag.String("depsargs", "", "CGO dependency configure arguments")
-	targets      = flag.String("targets", "*/*", "Comma separated targets to build for")
-	dockerImage  = flag.String("image", "", "Use custom docker image instead of official distribution")
-	moduleSubDir = flag.String("moduleSubDir", "", "Subdirectory with main module to build")
-	volumesFrom  = flag.String("volumesFrom", "", "Mount volumes from another docker container")
+	goVersion           = flag.String("go", "latest", "Go release to use for cross compilation")
+	srcPackage          = flag.String("pkg", "", "Sub-package to build if not root import")
+	srcRemote           = flag.String("remote", "", "Version control remote repository to build")
+	srcBranch           = flag.String("branch", "", "Version control branch to build")
+	outPrefix           = flag.String("out", "", "Prefix to use for output naming (empty = package name)")
+	outFolder           = flag.String("dest", "", "Destination folder to put binaries in (empty = current)")
+	crossDeps           = flag.String("deps", "", "CGO dependencies (configure/make based archives)")
+	crossArgs           = flag.String("depsargs", "", "CGO dependency configure arguments")
+	targets             = flag.String("targets", "*/*", "Comma separated targets to build for")
+	dockerImage         = flag.String("image", "", "Use custom docker image instead of official distribution")
+	moduleSubDir        = flag.String("moduleSubDir", "", "Subdirectory with main module to build")
+	volumesFrom         = flag.String("volumesFrom", "", "Mount volumes from another docker container")
+	dockerRM            = flag.Bool("dockerRM", true, "Removes docker containers after the run")
+	dockerContainerName = flag.String("dockerContainerName", "", "Names started docker container")
 )
 
 // ConfigFlags is a simple set of flags to define the environment and dependencies.
 type ConfigFlags struct {
-	Repository   string   // Root import path to build
-	Package      string   // Sub-package to build if not root import
-	Prefix       string   // Prefix to use for output naming
-	Remote       string   // Version control remote repository to build
-	Branch       string   // Version control branch to build
-	Dependencies string   // CGO dependencies (configure/make based archives)
-	Arguments    string   // CGO dependency configure arguments
-	Targets      []string // Targets to build for
-	ModuleSubDir string   // Subdirectory with Go Module to build
-	VolumesFrom  string   // Mount volumes from another docker container
+	Repository          string   // Root import path to build
+	Package             string   // Sub-package to build if not root import
+	Prefix              string   // Prefix to use for output naming
+	Remote              string   // Version control remote repository to build
+	Branch              string   // Version control branch to build
+	Dependencies        string   // CGO dependencies (configure/make based archives)
+	Arguments           string   // CGO dependency configure arguments
+	Targets             []string // Targets to build for
+	ModuleSubDir        string   // Subdirectory with Go Module to build
+	VolumesFrom         string   // Mount volumes from another docker container
+	DockerRM            bool     // Removes docker containers after the run
+	DockerContainerName string   // Names started docker container
 }
 
 // Command line arguments to pass to go build
@@ -171,16 +175,18 @@ func main() {
 	}
 	// Assemble the cross compilation environment and build options
 	config := &ConfigFlags{
-		Repository:   flag.Args()[0],
-		Package:      *srcPackage,
-		Remote:       *srcRemote,
-		Branch:       *srcBranch,
-		Prefix:       *outPrefix,
-		Dependencies: *crossDeps,
-		Arguments:    *crossArgs,
-		Targets:      strings.Split(*targets, ","),
-		ModuleSubDir: *moduleSubDir,
-		VolumesFrom:  *volumesFrom,
+		Repository:          flag.Args()[0],
+		Package:             *srcPackage,
+		Remote:              *srcRemote,
+		Branch:              *srcBranch,
+		Prefix:              *outPrefix,
+		Dependencies:        *crossDeps,
+		Arguments:           *crossArgs,
+		Targets:             strings.Split(*targets, ","),
+		ModuleSubDir:        *moduleSubDir,
+		VolumesFrom:         *volumesFrom,
+		DockerRM:            *dockerRM,
+		DockerContainerName: *dockerContainerName,
 	}
 	flags := &BuildFlags{
 		Verbose:  *buildVerbose,
@@ -324,7 +330,7 @@ func compile(image string, config *ConfigFlags, flags *BuildFlags, folder string
 	depsCache_w := filepath.ToSlash(re.ReplaceAllString(depsCache, "/$1"))
 
 	args := []string{
-		"run", "--rm",
+		"run",
 		"-v", folder_w + ":/build",
 		"-v", depsCache_w + ":/deps-cache:ro",
 		"-e", "REPO_REMOTE=" + config.Remote,
@@ -343,7 +349,15 @@ func compile(image string, config *ConfigFlags, flags *BuildFlags, folder string
 		"-e", "TARGETS=" + strings.Replace(strings.Join(config.Targets, " "), "*", ".", -1),
 		"-e", fmt.Sprintf("GOPROXY=%s", os.Getenv("GOPROXY")),
 		"-e", "MODULE_SUB_DIR=" + config.ModuleSubDir,
-		"--volumes-from", config.VolumesFrom,
+	}
+	if config.VolumesFrom != "" {
+		args = append(args, []string{"--volumes-from", config.VolumesFrom}...)
+	}
+	if config.DockerRM {
+		args = append(args, "--rm")
+	}
+	if config.DockerContainerName != "" {
+		args = append(args, []string{"--name", config.DockerContainerName}...)
 	}
 	if usesModules {
 		args = append(args, []string{"-e", "GO111MODULE=on"}...)
