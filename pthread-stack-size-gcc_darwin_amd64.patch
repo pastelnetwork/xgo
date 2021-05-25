@@ -1,0 +1,13 @@
+diff --git a/src/runtime/cgo/gcc_darwin_amd64.c b/src/runtime/cgo/gcc_darwin_amd64.c
+index 51410d5026..fc2fd9f423 100644
+--- a/src/runtime/cgo/gcc_darwin_amd64.c
++++ b/src/runtime/cgo/gcc_darwin_amd64.c
+@@ -38,6 +38,8 @@ _cgo_sys_thread_start(ThreadStart *ts)
+ 	pthread_attr_init(&attr);
+ 	pthread_attr_getstacksize(&attr, &size);
+ 	// Leave stacklo=0 and set stackhi=size; mstart will do the rest.
++	size = 0x200000;
++	pthread_attr_setstacksize(&attr, size);
+ 	ts->g->stackhi = size;
+ 	err = _cgo_try_pthread_create(&p, &attr, threadentry, ts);
+ 
