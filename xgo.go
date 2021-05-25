@@ -40,8 +40,7 @@ func init() {
 }
 
 // Cross compilation docker containers
-var dockerBase = "maxhora/xgo:base"
-var dockerDist = "maxhora/xgo:"
+var dockerDist = "pastelnetworkofficial/xgo:"
 
 // Command line arguments to fine tune the compilation
 var (
