@@ -47,6 +47,9 @@ function extension {
   fi
 }
 
+# Print ENV variables values
+echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+
 # Detect if we are using go modules
 if [[ "$GO111MODULE" == "on" || "$GO111MODULE" == "auto" ]]; then
   USEMODULES=true
