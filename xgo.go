@@ -349,9 +349,32 @@ func compile(image string, config *ConfigFlags, flags *BuildFlags, folder string
 		"-e", fmt.Sprintf("GOPROXY=%s", os.Getenv("GOPROXY")),
 		"-e", "MODULE_SUB_DIR=" + config.ModuleSubDir,
 	}
+
 	if config.VolumesFrom != "" {
-		args = append(args, []string{"--volumes-from", config.VolumesFrom}...)
+		args = []string{
+			"run",
+			"--volumes-from", config.VolumesFrom,
+			"-v", folder_w + ":/build",
+			"-v", depsCache_w + ":/deps-cache:ro",
+			"-e", "REPO_REMOTE=" + config.Remote,
+			"-e", "REPO_BRANCH=" + config.Branch,
+			"-e", "PACK=" + config.Package,
+			"-e", "DEPS=" + config.Dependencies,
+			"-e", "ARGS=" + config.Arguments,
+			"-e", "OUT=" + config.Prefix,
+			"-e", fmt.Sprintf("FLAG_V=%v", flags.Verbose),
+			"-e", fmt.Sprintf("FLAG_X=%v", flags.Steps),
+			"-e", fmt.Sprintf("FLAG_RACE=%v", flags.Race),
+			"-e", fmt.Sprintf("FLAG_TAGS=%s", flags.Tags),
+			"-e", fmt.Sprintf("FLAG_LDFLAGS=%s", flags.LdFlags),
+			"-e", fmt.Sprintf("FLAG_BUILDMODE=%s", flags.Mode),
+			"-e", fmt.Sprintf("FLAG_TRIMPATH=%v", flags.Trimpath),
+			"-e", "TARGETS=" + strings.Replace(strings.Join(config.Targets, " "), "*", ".", -1),
+			"-e", fmt.Sprintf("GOPROXY=%s", os.Getenv("GOPROXY")),
+			"-e", "MODULE_SUB_DIR=" + config.ModuleSubDir,
+		}
 	}
+
 	if config.DockerRM {
 		args = append(args, "--rm")
 	}
