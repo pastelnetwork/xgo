@@ -1,4 +1,4 @@
-ARG GOVERSION=1.16.x
+ARG GOVERSION=1.20.x
 FROM pastelnetwork/xgo:go-${GOVERSION}
 RUN go env -w GO111MODULE=auto
 
