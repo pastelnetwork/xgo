@@ -1,6 +1,5 @@
 ARG GOVERSION=1.16.x
-FROM techknowlogick/xgo:go-${GOVERSION}
-# https://github.com/techknowlogick/xgo/issues/104
+FROM pastelnetwork/xgo:go-${GOVERSION}
 RUN go env -w GO111MODULE=auto
 
 ADD docker/base/build.sh /build.sh
