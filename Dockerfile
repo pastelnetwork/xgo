@@ -1,5 +1,5 @@
-ARG GOVERSION=1.16.x
-FROM pastelnetwork/xgo:go-${GOVERSION}
+ARG GOVERSION=1.20.x
+FROM techknowlogick/xgo:go-${GOVERSION}
 RUN go env -w GO111MODULE=auto
 
 ADD docker/base/build.sh /build.sh
